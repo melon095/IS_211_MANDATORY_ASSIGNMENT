@@ -60,6 +60,9 @@ def prescription_queue_algorithm() -> tuple[List[Prescription], List[Person]]:
         ANTIBIOTIC: PrescriptionLevel.HIGH,
     }
 
+    # O(n * m)
+    #   n = number of people
+    #   m = prescriptions per person
     for person in people:
         for prescription_name in person.wanted_prescriptions:
             level = prescription_mapping[prescription_name]
@@ -70,6 +73,8 @@ def prescription_queue_algorithm() -> tuple[List[Prescription], List[Person]]:
 
     filtered = []
 
+    # O(n)
+    #   n = total number of prescriptions in all queues
     for level in [
         PrescriptionLevel.HIGH,
         PrescriptionLevel.MEDIUM,
@@ -78,6 +83,8 @@ def prescription_queue_algorithm() -> tuple[List[Prescription], List[Person]]:
         for prescription in queues[level]:
             filtered.append(prescription)
 
+    # Overall complexity
+    #   O(n * m) + O(n) = O(n * m)
     return filtered, people
 
 
@@ -105,6 +112,8 @@ def drug_inventory_algorithm():
                     new_batch.next = current
                     self.inventory[drug_id] = new_batch
                 else:
+                    # O(n)
+                    #   n = number of batches for the drug
                     while (
                         current.next
                         and current.next.expiry_date < new_batch.expiry_date
@@ -118,6 +127,8 @@ def drug_inventory_algorithm():
                 return False
 
             current = self.inventory[drug_id]
+            # O(n)
+            #   n = number of batches for the drug
             while current and quantity > 0:
                 if current.quantity >= quantity:
                     current.quantity -= quantity
@@ -128,20 +139,20 @@ def drug_inventory_algorithm():
             return False
 
     drug_inventory = DrugInventory()
-    drug_inventory.add_batch("Aspirin", "BATCH001", "2024-01-01", 100)
-    drug_inventory.add_batch("Aspirin", "BATCH002", "2023-12-01", 50)
-    drug_inventory.add_batch("Aspirin", "BATCH003", "2024-02-01", 75)
-    drug_inventory.add_batch("Ibuprofen", "BATCH001", "2024-03-01", 200)
-    drug_inventory.add_batch("Ibuprofen", "BATCH002", "2024-04-01", 150)
-    drug_inventory.add_batch("Lisinopril", "BATCH001", "2024-05-01", 100)
-    drug_inventory.add_batch("Metformin", "BATCH001", "2024-06-01", 120)
+    drug_inventory.add_batch(ASPIRIN, "BATCH001", "2024-01-01", 100)
+    drug_inventory.add_batch(ASPIRIN, "BATCH002", "2023-12-01", 50)
+    drug_inventory.add_batch(ASPIRIN, "BATCH003", "2024-02-01", 75)
+    drug_inventory.add_batch(IBUPROFEN, "BATCH001", "2024-03-01", 200)
+    drug_inventory.add_batch(IBUPROFEN, "BATCH002", "2024-04-01", 150)
+    drug_inventory.add_batch(LISINOPRIL, "BATCH001", "2024-05-01", 100)
+    drug_inventory.add_batch(METFORMIN, "BATCH001", "2024-06-01", 120)
 
-    if drug_inventory.dispense_drug("Aspirin", 30):
+    if drug_inventory.dispense_drug(ASPIRIN, 30):
         print("Dispensed 30 Aspirin.")
     else:
         print("Failed to dispense Aspirin.")
 
-    if drug_inventory.dispense_drug("Ibuprofen", 50):
+    if drug_inventory.dispense_drug(IBUPROFEN, 50):
         print("Dispensed 50 Ibuprofen.")
     else:
         print("Failed to dispense Ibuprofen.")
@@ -157,6 +168,11 @@ def drug_inventory_algorithm():
                 current = current.next
 
     print_linked_lists(drug_inventory)
+    
+    # Overall complexity
+    #   O(n) for adding batches (where n is the number of batches)
+    #   O(n) for dispensing drugs (where n is the number of batches)
+    #   Total: O(n)
 
 
 if __name__ == "__main__":
