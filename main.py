@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 import random
+from typing import List
 
 
 class PrescriptionLevel(Enum):
@@ -31,7 +32,7 @@ class Prescription:
     level: PrescriptionLevel
 
 
-def main():
+def prescription_queue_algorithm() -> List[Prescription]:
     queues = {
         PrescriptionLevel.HIGH: [],
         PrescriptionLevel.MEDIUM: [],
@@ -41,7 +42,9 @@ def main():
     people = [
         Person(
             name=f"Person_{i}",
-            wanted_prescriptions=[drug for drug in DROGAS if random.random() > 0.5],
+            wanted_prescriptions=[
+                drug for drug in DROGAS if random.random() > 0.5
+            ],
         )
         for i in range(100)
     ]
@@ -60,16 +63,19 @@ def main():
             level = prescription_mapping[prescription_name]
             queues[level].append(Prescription(prescription_name, level))
 
+    filtered = []
+
     for level in [
         PrescriptionLevel.HIGH,
         PrescriptionLevel.MEDIUM,
         PrescriptionLevel.LOW,
     ]:
         for prescription in queues[level]:
-            print(
-                f"Processing prescription: {prescription.name} with level {prescription.level.name}"
-            )
+            filtered.append(prescription)
+
+    return filtered
 
 
 if __name__ == "__main__":
-    main()
+    for a in prescription_queue_algorithm():
+        print(a.name, a.level)
