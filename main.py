@@ -9,12 +9,22 @@ class PrescriptionLevel(Enum):
     MEDIUM = 2
     HIGH = 3
 
+    def get_random_level(self):
+        if self == PrescriptionLevel.LOW:
+            return 0.9
+        elif self == PrescriptionLevel.MEDIUM:
+            return 0.5
+        elif self == PrescriptionLevel.HIGH:
+            return 0.1
+        return 0.0
+
 
 @dataclass
 class Person:
     name: str
     wanted_prescriptions: list[str]
     received_prescriptions: list[str] = field(default_factory=list)
+    prescription_score: int = 0
 
 
 ASPIRIN = "Aspirin"
@@ -41,16 +51,6 @@ def prescription_queue_algorithm() -> tuple[List[Prescription], List[Person]]:
         PrescriptionLevel.LOW: [],
     }
 
-    people = [
-        Person(
-            name=f"Person_{i}",
-            wanted_prescriptions=[
-                drug for drug in DROGAS if random.random() > 0.5
-            ],
-        )
-        for i in range(100)
-    ]
-
     prescription_mapping = {
         ASPIRIN: PrescriptionLevel.LOW,
         IBUPROFEN: PrescriptionLevel.LOW,
@@ -60,32 +60,80 @@ def prescription_queue_algorithm() -> tuple[List[Prescription], List[Person]]:
         ANTIBIOTIC: PrescriptionLevel.HIGH,
     }
 
-    # O(n * m)
-    #   n = number of people
-    #   m = prescriptions per person
-    for person in people:
-        for prescription_name in person.wanted_prescriptions:
-            level = prescription_mapping[prescription_name]
-            queues[level].append(
-                Prescription(prescription_name, level, person.name)
+    people = [
+            Person(
+                name=f"Person_{i}",
+                wanted_prescriptions=[
+                    drug for drug in DROGAS if random.random() < prescription_mapping[drug].get_random_level()
+                ],
             )
-            person.received_prescriptions.append(prescription_name)
+            for i in range(100)
+        ]
+    
+    # Lag en Perscription_Score kalkulator greie, som gir hver PerscriptionLevel en score(1-3) basert på (LOW-HIGH) og del på antall Perscriptions
+    # Gi hver person en Perscription_Score variabel og filtrer rekkefølgen på hvem som skal få delt ut hva basert på det
+    # Lag også en Queue Selector (HIGH PerscriptionLevel) eller (MEDIUM PerscriptionLevel) blir du plassert i den queue'en og senere filtrert innad i den queue'en
+        
+    
+
+    for person in people:
+        score = 0
+
+        for drug in person.wanted_prescriptions:
+            level = prescription_mapping[drug]
+
+            if level == PrescriptionLevel.LOW:
+                score += 1
+            elif level == PrescriptionLevel.MEDIUM:
+                score += 2
+            elif level == PrescriptionLevel.HIGH:
+                score += 3
+
+        person.prescription_score = score
+
+
+    people.sort(key=lambda person: person.prescription_score / len(person.wanted_prescriptions), reverse = True)
+
 
     filtered = []
 
-    # O(n)
-    #   n = total number of prescriptions in all queues
-    for level in [
-        PrescriptionLevel.HIGH,
-        PrescriptionLevel.MEDIUM,
-        PrescriptionLevel.LOW,
-    ]:
-        for prescription in queues[level]:
-            filtered.append(prescription)
+    for person in people:
+        for drug in person.wanted_prescriptions:    
+            level = prescription_mapping[drug]
 
-    # Overall complexity
-    #   O(n * m) + O(n) = O(n * m)
+            prescription = Prescription(drug, level, person.name)
+            filtered.append(prescription)
+            person.received_prescriptions.append(drug)
+
     return filtered, people
+
+
+    # # O(n * m)
+    # #   n = number of people
+    # #   m = prescriptions per person
+    # for person in people:
+    #     for prescription_name in person.wanted_prescriptions:
+    #         level = prescription_mapping[prescription_name]
+    #         queues[level].append(
+    #             Prescription(prescription_name, level, person.name)
+    #         )
+    #         person.received_prescriptions.append(prescription_name)
+
+    # filtered = []
+
+    # # O(n)
+    # #   n = total number of prescriptions in all queues
+    # for level in [
+    #     PrescriptionLevel.HIGH,
+    #     PrescriptionLevel.MEDIUM,
+    #     PrescriptionLevel.LOW,
+    # ]:
+    #     for prescription in queues[level]:
+    #         filtered.append(prescription)
+
+    # # Overall complexity
+    # #   O(n * m) + O(n) = O(n * m)
+    # return filtered, people
 
 
 def drug_inventory_algorithm():
