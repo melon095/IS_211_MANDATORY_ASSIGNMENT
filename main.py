@@ -6,7 +6,7 @@ import itertools
 import random
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 class Urgency(Enum):
@@ -67,6 +67,12 @@ class Patient:
     check_in_tick: int
 
 
+@dataclass
+class PatientRecord:
+    patient: Patient
+    status: str
+
+
 class PharmacyPriorityQueue:
     def __init__(self) -> None:
         self._heap: List[Tuple[int, int, Patient]] = []
@@ -91,6 +97,42 @@ class PharmacyPriorityQueue:
 
     def waiting_count(self) -> int:
         return len(self._heap)
+
+
+class PatientRegistry:
+    def __init__(self) -> None:
+        self._records: Dict[int, PatientRecord] = {}
+
+    def add_waiting_patient(self, patient: Patient) -> None:
+        self._records[patient.patient_id] = PatientRecord(
+            patient=patient, status="WAITING"
+        )
+
+    def mark_served(self, patient_id: int) -> None:
+        if patient_id in self._records:
+            self._records[patient_id].status = "SERVED"
+
+    def total_patients(self) -> int:
+        return len(self._records)
+
+    def waiting_patients(self) -> int:
+        return sum(
+            1 for record in self._records.values() if record.status == "WAITING"
+        )
+
+    def served_patients(self) -> int:
+        return sum(
+            1 for record in self._records.values() if record.status == "SERVED"
+        )
+
+    def all_served(self) -> bool:
+        return self.total_patients() > 0 and self.waiting_patients() == 0
+
+    def status_for(self, patient_id: int) -> Optional[str]:
+        record = self._records.get(patient_id)
+        if record is None:
+            return None
+        return record.status
 
 
 def random_name() -> str:
@@ -132,10 +174,18 @@ def random_drug() -> Drug:
     return random.choices(all_drugs, weights=weights, k=1)[0]
 
 
-def print_dashboard(tick: int, queue: PharmacyPriorityQueue) -> None:
+def print_dashboard(
+    tick: int, queue: PharmacyPriorityQueue, registry: PatientRegistry
+) -> None:
     next_patient = queue.peek_next()
     print("\n" + "=" * 72)
     print(f"TICK {tick:02d} | Waiting: {queue.waiting_count()}")
+    print(
+        "Records: "
+        f"{registry.total_patients()} total | "
+        f"{registry.waiting_patients()} waiting | "
+        f"{registry.served_patients()} served"
+    )
     if next_patient is None:
         print("Dashboard: No patient waiting.")
     else:
@@ -156,19 +206,21 @@ def run_simulation() -> None:
     staff_capacity_per_tick = 2
 
     queue = PharmacyPriorityQueue()
+    registry = PatientRegistry()
     next_patient_id = 1
-    created_patients = 0
-    served_patients = 0
     total_wait_time = 0
 
     tick = 1
-    while created_patients < total_new_patients or queue.waiting_count() > 0:
-        print_dashboard(tick, queue)
+    while (
+        registry.total_patients() < total_new_patients
+        or queue.waiting_count() > 0
+    ):
+        print_dashboard(tick, queue, registry)
 
-        # New check-ins
+        # Check-ins
         arrivals = random.randint(0, 3)
         for _ in range(arrivals):
-            if created_patients >= total_new_patients:
+            if registry.total_patients() >= total_new_patients:
                 break
             patient = Patient(
                 patient_id=next_patient_id,
@@ -177,12 +229,12 @@ def run_simulation() -> None:
                 check_in_tick=tick,
             )
             queue.check_in(patient)
+            registry.add_waiting_patient(patient)
             print(
                 f"CHECK-IN      #{patient.patient_id} {patient.name:<16} | "
                 f"{patient.drug.label:<24} | "
                 f"Priority {patient.drug.urgency.name}"
             )
-            created_patients += 1
             next_patient_id += 1
 
         # Serving
@@ -193,24 +245,31 @@ def run_simulation() -> None:
                 continue
 
             wait_time = tick - patient.check_in_tick
+            registry.mark_served(patient.patient_id)
+            status = registry.status_for(patient.patient_id)
             total_wait_time += wait_time
-            served_patients += 1
             print(
                 f"SERVE         #{patient.patient_id} {patient.name:<16} | "
                 f"{patient.drug.label:<24} | "
                 f"Urgency {patient.drug.urgency.name:<11} | "
-                f"Wait {wait_time} tick(s)"
+                f"Wait {wait_time} tick(s) | "
+                f"Registry {status}"
             )
 
         tick += 1
 
-    average_wait = total_wait_time / served_patients if served_patients else 0.0
+    registry_total = registry.total_patients()
+    registry_served = registry.served_patients()
+    registry_waiting = registry.waiting_patients()
+    average_wait = total_wait_time / registry_served if registry_served else 0.0
 
     print("\n" + "#" * 72)
     print("Simulation complete")
-    print(f"Patients created: {created_patients}")
-    print(f"Patients served : {served_patients}")
+    print(f"Patients created: {registry_total}")
+    print(f"Patients served : {registry_served}")
+    print(f"Patients waiting: {registry_waiting}")
     print(f"Average wait    : {average_wait:.2f} tick(s)")
+    print(f"All served      : {registry.all_served()}")
     print("#" * 72)
 
 
