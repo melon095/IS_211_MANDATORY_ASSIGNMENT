@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Tuple
 
 class Urgency(Enum):
     """Priority levels for medication urgency. Lower value = higher priority."""
+
     IMMEDIATE = 0
     WITHIN_HOUR = 1
     TODAY = 2
@@ -19,6 +20,7 @@ class Urgency(Enum):
 
 class Drug(Enum):
     """Drug types with associated urgency and reason. Format: (label, urgency, reason)"""
+
     INSULIN = ("Insulin", Urgency.IMMEDIATE, "Dose is time-critical")
     ADRENALINE_AUTO_INJECTOR = (
         "Adrenaline Auto-Injector",
@@ -77,7 +79,7 @@ class PatientRecord:
 
 class PharmacyPriorityQueue:
     """Min-heap based priority queue for patients. Prioritizes by urgency, then FIFO."""
-    
+
     def __init__(self) -> None:
         # The heap stores the tuple (urgency_value, sequence_number, patient)
         # THe sequence_number is used to ensure FIFO order of the same urgency level
@@ -111,10 +113,10 @@ class PharmacyPriorityQueue:
 
 class PatientRegistry:
     """
-    Tracks the status of paitent records with either status WAITING or SERVED. 
+    Tracks the status of paitent records with either status WAITING or SERVED.
     Use dictionary which is hash based for O(1) lookups.
     """
-    
+
     def __init__(self) -> None:
         self._records: Dict[int, PatientRecord] = {}
 
