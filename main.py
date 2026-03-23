@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Tuple
 
 
 class Urgency(Enum):
+    """Priority levels for medication urgency. Lower value = higher priority."""
     IMMEDIATE = 0
     WITHIN_HOUR = 1
     TODAY = 2
@@ -17,6 +18,7 @@ class Urgency(Enum):
 
 
 class Drug(Enum):
+    """Drug types with associated urgency and reason. Format: (label, urgency, reason)"""
     INSULIN = ("Insulin", Urgency.IMMEDIATE, "Dose is time-critical")
     ADRENALINE_AUTO_INJECTOR = (
         "Adrenaline Auto-Injector",
@@ -74,61 +76,81 @@ class PatientRecord:
 
 
 class PharmacyPriorityQueue:
+    """Min-heap based priority queue for patients. Prioritizes by urgency, then FIFO."""
+    
     def __init__(self) -> None:
+        # The heap stores the tuple (urgency_value, sequence_number, patient)
+        # THe sequence_number is used to ensure FIFO order of the same urgency level
         self._heap: List[Tuple[int, int, Patient]] = []
         self._sequence = itertools.count()
 
     def check_in(self, patient: Patient) -> None:
+        """Add patient to queue. O(log n) complexity."""
         heapq.heappush(
             self._heap,
             (patient.drug.urgency.value, next(self._sequence), patient),
         )
 
     def serve_next(self) -> Optional[Patient]:
+        """Remove and return highest priority patient. Returns None if empty. O(log n)."""
         if not self._heap:
             return None
         _, _, patient = heapq.heappop(self._heap)
         return patient
 
     def peek_next(self) -> Optional[Patient]:
+        """View next patient without removing. Returns None if empty. O(1)."""
         if not self._heap:
             return None
         return self._heap[0][2]
 
     def waiting_count(self) -> int:
+        """Return number of patients in queue. O(1)."""
         return len(self._heap)
 
 
 class PatientRegistry:
+    """
+    Tracks the status of paitent records with either status WAITING or SERVED. 
+    Use dictionary which is hash based for O(1) lookups.
+    """
+    
     def __init__(self) -> None:
         self._records: Dict[int, PatientRecord] = {}
 
     def add_waiting_patient(self, patient: Patient) -> None:
+        """Register new patient with WAITING status."""
         self._records[patient.patient_id] = PatientRecord(
             patient=patient, status="WAITING"
         )
 
     def mark_served(self, patient_id: int) -> None:
+        """Update patient status to SERVED."""
         if patient_id in self._records:
             self._records[patient_id].status = "SERVED"
 
     def total_patients(self) -> int:
+        """Return total number of registered patients. O(1)."""
         return len(self._records)
 
     def waiting_patients(self) -> int:
+        """Return count of patients with WAITING status. O(n)."""
         return sum(
             1 for record in self._records.values() if record.status == "WAITING"
         )
 
     def served_patients(self) -> int:
+        """Return count of patients with SERVED status. O(n)."""
         return sum(
             1 for record in self._records.values() if record.status == "SERVED"
         )
 
     def all_served(self) -> bool:
+        """Check if all patients have been served. O(n)."""
         return self.total_patients() > 0 and self.waiting_patients() == 0
 
     def status_for(self, patient_id: int) -> Optional[str]:
+        """Get status for specific patient. Returns None if not found."""
         record = self._records.get(patient_id)
         if record is None:
             return None
@@ -136,6 +158,7 @@ class PatientRegistry:
 
 
 def random_name() -> str:
+    """Generate random patient name from predefined lists."""
     first_names = [
         "Alex",
         "Sam",
@@ -160,6 +183,10 @@ def random_name() -> str:
 
 
 def random_drug() -> Drug:
+    """
+    Select random drug with realistic distribution.
+    It will favour routine medications over emergency drugs.
+    """
     all_drugs = [
         Drug.INSULIN,
         Drug.ADRENALINE_AUTO_INJECTOR,
@@ -177,6 +204,7 @@ def random_drug() -> Drug:
 def print_dashboard(
     tick: int, queue: PharmacyPriorityQueue, registry: PatientRegistry
 ) -> None:
+    """Display current simulation state including next patient and statistics."""
     next_patient = queue.peek_next()
     print("\n" + "=" * 72)
     print(f"TICK {tick:02d} | Waiting: {queue.waiting_count()}")
@@ -200,7 +228,10 @@ def print_dashboard(
 
 
 def run_simulation() -> None:
-    # random.seed(211)
+    """
+    Run pharmacy queue simulation.
+    Processes patients until all are served, tracking wait times and statistics.
+    """
 
     total_new_patients = 60
     staff_capacity_per_tick = 2
@@ -211,13 +242,14 @@ def run_simulation() -> None:
     total_wait_time = 0
 
     tick = 1
+    # Continue until all patients created AND queue is empty
     while (
         registry.total_patients() < total_new_patients
         or queue.waiting_count() > 0
     ):
         print_dashboard(tick, queue, registry)
 
-        # Check-ins
+        # Phase 1: Between 0-3 patients arrive
         arrivals = random.randint(0, 3)
         for _ in range(arrivals):
             if registry.total_patients() >= total_new_patients:
@@ -237,7 +269,7 @@ def run_simulation() -> None:
             )
             next_patient_id += 1
 
-        # Serving
+        # Phase 2: Serve patients up to staff capacity
         for _ in range(staff_capacity_per_tick):
             patient = queue.serve_next()
             if patient is None:
@@ -258,6 +290,7 @@ def run_simulation() -> None:
 
         tick += 1
 
+    # Print final statistics
     registry_total = registry.total_patients()
     registry_served = registry.served_patients()
     registry_waiting = registry.waiting_patients()
